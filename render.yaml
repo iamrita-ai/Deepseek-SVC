@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: technical-serena-bot
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
+    envVars:
+      - key: API_ID
+        sync: false
+      - key: API_HASH
+        sync: false
+      - key: BOT_TOKEN
+        sync: false
+      - key: MONGO_URL
+        sync: false
+      - key: LOG_CHANNEL
+        value: "-1003286415377"
+      - key: FORCE_SUB_CHANNEL
+        value: "serenaunzipbot"
+      - key: OWNER_IDS
+        value: "1598576202,6518065496"
+      - key: PYTHON_VERSION
+        value: "3.9.0"
