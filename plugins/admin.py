@@ -1,19 +1,51 @@
-from pyrogram import Client, filters
+from pyrogram import filters
 from pyrogram.types import Message
 from datetime import datetime
-
 from config import Config
-from utils.db import Database
 
-db = Database(Config.MONGO_URL, Config.DATABASE_NAME)
-
-@app.on_message(filters.command("stats") & filters.user(Config.OWNER_IDS))
-async def stats_command(client: Client, message: Message):
-    users = await db.get_all_users()
-    total_users = len(users)
-    premium_users = len([u for u in users if u.get('premium', False)])
+def register_admin_handlers(app, db):
+    @app.on_message(filters.command("add") & filters.user(Config.OWNER_IDS))
+    async def add_premium(client, message: Message):
+        try:
+            user_id = int(message.command[1])
+            await db.add_premium(user_id, 30)  # 30 days premium
+            await message.reply_text(f"✅ User {user_id} added to premium for 30 days")
+        except:
+            await message.reply_text("Usage: /add user_id")
     
-    stats_text = f"""
+    @app.on_message(filters.command("rem") & filters.user(Config.OWNER_IDS))
+    async def remove_premium(client, message: Message):
+        try:
+            user_id = int(message.command[1])
+            await db.remove_premium(user_id)
+            await message.reply_text(f"✅ User {user_id} removed from premium")
+        except:
+            await message.reply_text("Usage: /rem user_id")
+    
+    @app.on_message(filters.command("get") & filters.user(Config.OWNER_IDS))
+    async def get_users(client, message: Message):
+        users = await db.get_all_users()
+        text = "👥 **All Users:**\n\n"
+        for user in users:
+            text += f"ID: {user['user_id']} | Premium: {user.get('premium', False)}\n"
+        await message.reply_text(text)
+    
+    @app.on_message(filters.command("lock") & filters.user(Config.OWNER_IDS))
+    async def lock_channel(client, message: Message):
+        try:
+            channel_id = int(message.command[1])
+            await db.lock_channel(channel_id)
+            await message.reply_text(f"✅ Channel {channel_id} locked")
+        except:
+            await message.reply_text("Usage: /lock channel_id")
+    
+    @app.on_message(filters.command("stats") & filters.user(Config.OWNER_IDS))
+    async def stats_command(client, message: Message):
+        users = await db.get_all_users()
+        total_users = len(users)
+        premium_users = len([u for u in users if u.get('premium', False)])
+        
+        stats_text = f"""
 📊 **Bot Statistics - {Config.BRAND_NAME}**
 
 **Users:** {total_users}
@@ -22,30 +54,4 @@ async def stats_command(client: Client, message: Message):
 
 **Server Time:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 """
-    await message.reply_text(stats_text)
-
-@app.on_message(filters.command("broadcast") & filters.user(Config.OWNER_IDS))
-async def broadcast_command(client: Client, message: Message):
-    if len(message.command) < 2:
-        await message.reply_text("Usage: /broadcast your_message")
-        return
-    
-    broadcast_text = " ".join(message.command[1:])
-    users = await db.get_all_users()
-    
-    sent = 0
-    failed = 0
-    
-    for user in users:
-        try:
-            await client.send_message(user['user_id'], broadcast_text)
-            sent += 1
-        except:
-            failed += 1
-        await asyncio.sleep(0.1)  # Prevent flooding
-    
-    await message.reply_text(
-        f"📢 Broadcast Complete!\n"
-        f"Sent: {sent}\n"
-        f"Failed: {failed}"
-  )
+        await message.reply_text(stats_text)
